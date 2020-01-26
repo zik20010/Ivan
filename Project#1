@@ -1,0 +1,369 @@
+import pygame
+import random
+from os import path
+var = pygame.mixer_music
+snd_dir = path.join(path.dirname(r'C:\Users\user\PycharmProjects\untitled\music'), 'music')
+
+
+
+player_sprite_toggle = True
+
+try:
+    save_file = open("save.txt", "r")
+    high_score = int(save_file.read())
+    save_file.close()
+except:
+    save_file = open("save.txt", 'w')
+    save_file.write("0")
+    high_score = 0
+    save_file.close()
+
+
+# ???
+class Grenade:
+    pass
+
+
+class Player:
+    def __init__(self, x, y, width, height, breath=100, grenade_count=1):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.breath = breath
+        self.grenade_count = grenade_count
+
+    def get_player_position(self):
+        return [self.x, self.y, self.width, self.height]
+
+
+class Enemy:
+    def __init__(self, x, y, width, height, baby):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.baby = baby
+
+    def get_enemy(self):
+        return [self.x, self.y, self.width, self.height]
+
+    def get_baby(self):
+        return self.baby
+
+
+class Cloud:
+    def __init__(self, x, y, width, height, line):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.line = line
+
+    def get_cloud(self):
+        return [self.x, self.y, self.width, self.height]
+
+    def get_line(self):
+        return self.line
+
+
+# Отрисовка окна
+def draw_window():
+    global plusFramesCurrent, plus
+
+    # Заливка окна белым
+    window.fill(WHITE)
+
+    for cloud in clouds:
+        pygame.draw.ellipse(window, GRAY, cloud.get_cloud(), cloud.get_line())
+
+    if player_sprite_toggle:
+        window.blit(player_sprite, [player.x, player.y])
+    else:
+        # Если игра закончена - песронаж становится красным, пока игра идёт - персонаж становится серым
+        if end:
+            pygame.draw.rect(window, RED, player.get_player_position())
+        else:
+            pygame.draw.rect(window, GRAY, player.get_player_position())
+
+    # Отрисовка врага
+    for enemy in enemies:
+        pygame.draw.rect(window, GREEN, enemy.get_enemy())
+
+    # Отрисовка очков
+    window.blit(line_score, [lineScore_x, lineScore_y])
+    window.blit(line_highScore, [lineHighScore_x, lineHighScore_y])
+
+    # Отрисовка Окончания игры
+    if end:
+        window.blit(line_GameOver, [lineGameOver_x, lineGameOver_y])
+        window.blit(line_restart, [lineRestart_x, lineRestart_y])
+
+    pygame.draw.rect(window, SAND, [floor_x, floor_y, floor_width, floor_height])
+
+    # Обновление окна
+    pygame.display.update()
+
+
+def save():
+    save_file = open("save.txt", "w")
+    print("Saved")
+    save_file.write(str(high_score))
+    save_file.close()
+
+
+# Создание нового врага
+def new_enemy():
+    enemy_width = random.randrange(20, 40)
+    enemy_height = random.randrange(45, 75)
+    enemy_x = window_width + enemy_width
+    enemy_y = floor_y - enemy_height
+
+    choice = random.randrange(0, 5)
+    if choice == 1:
+        baby = True
+    else:
+        baby = False
+
+    enemies.append(Enemy(enemy_x, enemy_y, enemy_width, enemy_height, baby))
+
+
+# noinspection PyGlobalUndefined
+def new_cloud():
+    cloud_line = random.randrange(7, 15)
+    cloud_width = random.randrange(80, 120)
+    cloud_height = random.randrange(40, 65)
+    cloud_x = window_width + cloud_width
+    cloud_y = random.randrange(0, 85)
+
+    if clouds:
+        last_cloud = clouds[-1]
+        if not collide(last_cloud.x, last_cloud.y, last_cloud.width + 10, last_cloud.height + 10,
+                       cloud_x, cloud_y, cloud_width, cloud_height):
+            clouds.append(Cloud(cloud_x, cloud_y, cloud_width, cloud_height, cloud_line))
+    else:
+        clouds.append(Cloud(cloud_x, cloud_y, cloud_width, cloud_height, cloud_line))
+
+
+# Функция на проверку столкновения
+def collide(p_x, p_y, p_w, p_h, e_x, e_y, e_w, e_h):
+    p_w = p_x + p_w
+    p_h = p_y + p_h
+
+    e_w = e_x + e_w
+    e_h = e_y + e_h
+
+    cond_1 = (e_x <= p_x <= e_w) or (e_x <= p_w <= e_w)
+    cond_2 = (e_y <= p_y <= e_h) or (e_y <= p_h <= e_h)
+    cond_3 = (p_x <= e_x <= p_w) or (p_x <= e_w <= p_w)
+    cond_4 = (p_y <= e_y <= p_h) or (p_y <= e_h <= p_h)
+
+    return ((cond_1 and cond_2) or (cond_3 and cond_4)) or ((cond_1 and cond_4) or (cond_3 and cond_2))
+
+
+# Заруск библиотеки
+pygame.init()
+# Прыжок
+shoot_sound = pygame.mixer.Sound(path.join(snd_dir, 'Jump14.wav'))
+pygame.mixer.music.set_volume(0.4)
+
+# Размеры окна
+window_width = 700
+window_height = 500
+
+# Создание шрифтов
+pygame.font.SysFont("arial", 36)
+font = pygame.font.Font(None, 30)
+font_GameOver = pygame.font.Font(None, 60)
+font_restart = pygame.font.Font(None, 20)
+
+# Высота пола
+floor_y = window_height - 50
+floor_x = 0
+floor_width = window_width
+floor_height = window_height
+
+# Координаты всех строчек текста
+lineScore_x = 20
+lineScore_y = 20
+
+linePlus_x = 50
+linePlus_y = 80
+
+lineHighScore_x = 20
+lineHighScore_y = 50
+
+lineRestart_x = window_width // 2 + 72
+lineRestart_y = window_height // 2 - 25
+
+lineGameOver_x = window_width // 2
+lineGameOver_y = window_height // 2 - 75
+
+# Стартовая скорость врага и его создание
+start_enemy_speed = 6
+cloud_start_speed = random.randrange(2, 5)
+
+# Очки и лучший результат
+score = 0
+
+# Таймер надписи +50 в кадрах
+plusFramesConst = plusFramesCurrent = 30
+
+# Разрешение на прыжок, сила прыжка и гравитация
+isJump = False
+jumpForceConst = jumpForceCurrent = 13
+gravity = 3.5
+# Кадры в секунду
+FPS = 60
+
+# Создание цветов
+GRAY = pygame.Color("gray")
+WHITE = pygame.Color("white")
+GREEN = pygame.Color("green")
+RED = pygame.Color("red")
+BLACK = pygame.Color("black")
+BLUE = pygame.Color("blue")
+SAND = (244, 164, 96)
+
+# Создание окна и смена его названия
+window = pygame.display.set_mode((window_width, window_height))
+pygame.display.set_caption("Dino Stranding")
+
+# Создание строк перезапуска, окончания игры и +50
+line_GameOver = font_GameOver.render('GAME OVER', 1, RED)
+line_restart = font_restart.render('press "R" to restart', 1, RED)
+
+# Создание таймера кадров
+clock = pygame.time.Clock()
+
+enemies = []
+clouds = []
+
+new_enemy()
+new_cloud()
+
+# Параметры игрока
+player_width = 80
+player_height = 100
+player_x = 225
+player_y = floor_y - player_height
+player_sprite = pygame.transform.scale(pygame.image.load("Dino_idle.png"), [player_width, player_height])
+
+player = Player(player_x, player_y, player_width, player_height)
+
+
+# Создание флагов
+run = True
+end = False
+plus = False
+plus_score = True
+# Мелодия
+expl_sounds = []
+for snd in ['expl3.wav', 'expl6.wav']:
+    expl_sounds.append(pygame.mixer.Sound(path.join(snd_dir, snd)))
+pygame.mixer.music.load(path.join(snd_dir, 'tgfcoder-FrozenJam-SeamlessLoop.ogg'))
+pygame.mixer.music.set_volume(0.2)
+
+pygame.mixer.music.play(loops=-1)
+
+while run:
+
+
+    clock.tick(FPS)
+
+    cloud_choice = random.randrange(0, 60)
+    if cloud_choice == 1:
+        new_cloud()
+
+    enemy_choice = random.randrange(0, 100)
+    if enemy_choice == 1:
+        new_enemy()
+
+    # Изменение очков и скорости врага
+    if not end:
+        score += 1
+        if high_score < score:
+            high_score = score
+        enemy_speed = score / 250 + start_enemy_speed
+        cloud_speed = enemy_speed + cloud_start_speed
+
+        for enemy in enemies:
+            if enemy.x < 0 - enemy.width:
+                enemies.pop(enemies.index(enemy))
+            else:
+                enemy.x -= enemy_speed
+    else:
+        cloud_speed = cloud_start_speed
+
+    for cloud in clouds:
+        if cloud.x < 0 - cloud.width:
+            clouds.pop(clouds.index(cloud))
+        else:
+            cloud.x -= cloud_speed
+
+    # Создание строк очков
+    line_score = font.render(f'Score: {score}', 1, BLACK)
+    line_highScore = font.render(f'High score: {high_score}', 1, BLACK)
+
+    # Получение событий
+    for event in pygame.event.get():
+
+        # Завершение цикла при нажатии на крестик
+        if event.type == pygame.QUIT:
+            run = False
+            if not end:
+                save()
+
+    # Получение всех нажатых клавиш
+    keys = pygame.key.get_pressed()
+
+    # Нажатие на прыжок
+    if (keys[pygame.K_SPACE] or keys[pygame.K_w] or keys[pygame.K_UP]) and not end and not isJump:
+        isJump = True
+        shoot_sound.play()
+
+    # Перезапуск
+    if keys[pygame.K_r] and end:
+        end = False
+        score = 0
+        enemies = []
+        clouds = []
+        new_enemy()
+        new_cloud()
+        cloud_start_speed = random.randrange(2, 5)
+        player.y = floor_y - player.height
+        isJump = False
+        jumpForceCurrent = jumpForceConst
+
+    if keys[pygame.K_l]:
+        save_file = open("save.txt", "w")
+        save_file.write("0")
+        save_file.close()
+
+    # Прыжок
+    if isJump:
+        if jumpForceCurrent >= -jumpForceConst:
+            if jumpForceCurrent < 0:
+                player.y += (jumpForceCurrent ** 2) // gravity
+            else:
+                player.y -= (jumpForceCurrent ** 2) // gravity
+            jumpForceCurrent -= 1
+        else:
+            isJump = False
+            jumpForceCurrent = jumpForceConst
+
+    # Столкновение с врагом (проверка)
+    for enemy in enemies:
+        if collide(player.x, player.y, player.width, player.height, enemy.x, enemy.y, enemy.width, enemy.height)\
+                and not end:
+            end = True
+            enemy_speed = 0
+            save()
+
+    # Вызов отрисовки окна
+    draw_window()
+
+# Выход из программы
+pygame.quit()
+
+
