@@ -1,70 +1,50 @@
 import pygame
 import random
 from os import path
+
+
 var = pygame.mixer_music
-snd_dir = path.join(path.dirname(r'C:\Users\user\PycharmProjects\untitled\music'), 'music')
-
-
+snd_dir = path.join(path.dirname(r'C:\Users\Grixa\PycharmProjects\NewPC_NewLive\DinoStranding\music'), 'music')
 
 player_sprite_toggle = True
 
+# noinspection PyBroadException
 try:
     save_file = open("save.txt", "r")
     high_score = int(save_file.read())
     save_file.close()
 except:
-    save_file = open("save.txt", 'w')
-    save_file.write("0")
+    save_file = open("save.txt", "w")
     high_score = 0
+    save_file.write("0")
     save_file.close()
 
 
-# ???
-class Grenade:
-    pass
-
-
-class Player:
-    def __init__(self, x, y, width, height, breath=100, grenade_count=1):
+class Object:
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.breath = breath
-        self.grenade_count = grenade_count
 
-    def get_player_position(self):
+    def get_pos_size(self):
         return [self.x, self.y, self.width, self.height]
 
 
-class Enemy:
+class Enemy(Object):
     def __init__(self, x, y, width, height, baby):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
+        super().__init__(x, y, width, height)
         self.baby = baby
 
-    def get_enemy(self):
-        return [self.x, self.y, self.width, self.height]
 
-    def get_baby(self):
-        return self.baby
-
-
-class Cloud:
+class Cloud(Object):
     def __init__(self, x, y, width, height, line):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
+        super().__init__(x, y, width, height)
         self.line = line
 
-    def get_cloud(self):
-        return [self.x, self.y, self.width, self.height]
 
-    def get_line(self):
-        return self.line
+# class Grenade(Object):
+#     pass
 
 
 # Отрисовка окна
@@ -74,25 +54,35 @@ def draw_window():
     # Заливка окна белым
     window.fill(WHITE)
 
-    for cloud in clouds:
-        pygame.draw.ellipse(window, GRAY, cloud.get_cloud(), cloud.get_line())
+    for draw_cloud in clouds:
+        # print(cloud.get_pos_size)
+        # print(cloud.line)
+        pygame.draw.ellipse(window, GRAY, draw_cloud.get_pos_size(), draw_cloud.line)
 
     if player_sprite_toggle:
-        window.blit(player_sprite, [player.x, player.y])
+        window.blit(player_sprite, [player_x, player_y])
     else:
         # Если игра закончена - песронаж становится красным, пока игра идёт - персонаж становится серым
         if end:
-            pygame.draw.rect(window, RED, player.get_player_position())
+            pygame.draw.rect(window, RED, [player_x, player_y, player_width, player_height])
         else:
-            pygame.draw.rect(window, GRAY, player.get_player_position())
+            pygame.draw.rect(window, GRAY, [player_x, player_y, player_width, player_height])
 
     # Отрисовка врага
-    for enemy in enemies:
-        pygame.draw.rect(window, GREEN, enemy.get_enemy())
+    for draw_enemy in enemies:
+        pygame.draw.rect(window, GREEN, draw_enemy.get_pos_size())
 
     # Отрисовка очков
     window.blit(line_score, [lineScore_x, lineScore_y])
     window.blit(line_highScore, [lineHighScore_x, lineHighScore_y])
+
+    # Отрисовка +50
+    if plus and plusFramesCurrent >= 0:
+        window.blit(line_plus, [linePlus_x, linePlus_y])
+        plusFramesCurrent -= 1
+    else:
+        plusFramesCurrent = plusFramesConst
+        plus = False
 
     # Отрисовка Окончания игры
     if end:
@@ -106,10 +96,10 @@ def draw_window():
 
 
 def save():
-    save_file = open("save.txt", "w")
-    print("Saved")
-    save_file.write(str(high_score))
-    save_file.close()
+    func_save_file = open("save.txt", "w")
+    print("Saved", high_score)
+    func_save_file.write(str(high_score))
+    func_save_file.close()
 
 
 # Создание нового врага
@@ -138,7 +128,8 @@ def new_cloud():
 
     if clouds:
         last_cloud = clouds[-1]
-        if not collide(last_cloud.x, last_cloud.y, last_cloud.width + 10, last_cloud.height + 10,
+
+        if not collide(last_cloud.x, last_cloud.y, last_cloud.width + 10, last_cloud.height,
                        cloud_x, cloud_y, cloud_width, cloud_height):
             clouds.append(Cloud(cloud_x, cloud_y, cloud_width, cloud_height, cloud_line))
     else:
@@ -163,22 +154,23 @@ def collide(p_x, p_y, p_w, p_h, e_x, e_y, e_w, e_h):
 
 # Заруск библиотеки
 pygame.init()
-# Прыжок
+# Звук прыжка
 shoot_sound = pygame.mixer.Sound(path.join(snd_dir, 'Jump14.wav'))
 pygame.mixer.music.set_volume(0.4)
 
 # Размеры окна
-window_width = 700
-window_height = 500
+window_width = 1300
+window_height = 700
 
 # Создание шрифтов
 pygame.font.SysFont("arial", 36)
 font = pygame.font.Font(None, 30)
 font_GameOver = pygame.font.Font(None, 60)
 font_restart = pygame.font.Font(None, 20)
+font_plus = pygame.font.Font(None, 35)
 
 # Высота пола
-floor_y = window_height - 50
+floor_y = window_height - 100
 floor_x = 0
 floor_width = window_width
 floor_height = window_height
@@ -199,8 +191,19 @@ lineRestart_y = window_height // 2 - 25
 lineGameOver_x = window_width // 2
 lineGameOver_y = window_height // 2 - 75
 
+# Параметры игрока
+player_width = 80
+player_height = 100
+player_x = 225
+player_y = floor_y - player_height
+if player_sprite_toggle:
+    player_sprite = pygame.transform.scale(pygame.image.load("Dino_idle.png"), [player_width, player_height])
+
+grenade_width = 20
+grenade_height = 30
+
 # Стартовая скорость врага и его создание
-start_enemy_speed = 6
+start_enemy_speed = 7
 cloud_start_speed = random.randrange(2, 5)
 
 # Очки и лучший результат
@@ -211,8 +214,9 @@ plusFramesConst = plusFramesCurrent = 30
 
 # Разрешение на прыжок, сила прыжка и гравитация
 isJump = False
-jumpForceConst = jumpForceCurrent = 13
-gravity = 3.5
+jumpForceConst = jumpForceCurrent = 14
+gravity = 5.25
+
 # Кадры в секунду
 FPS = 60
 
@@ -222,7 +226,6 @@ WHITE = pygame.Color("white")
 GREEN = pygame.Color("green")
 RED = pygame.Color("red")
 BLACK = pygame.Color("black")
-BLUE = pygame.Color("blue")
 SAND = (244, 164, 96)
 
 # Создание окна и смена его названия
@@ -232,6 +235,7 @@ pygame.display.set_caption("Dino Stranding")
 # Создание строк перезапуска, окончания игры и +50
 line_GameOver = font_GameOver.render('GAME OVER', 1, RED)
 line_restart = font_restart.render('press "R" to restart', 1, RED)
+line_plus = font_plus.render('+50', 1, GREEN)
 
 # Создание таймера кадров
 clock = pygame.time.Clock()
@@ -242,21 +246,13 @@ clouds = []
 new_enemy()
 new_cloud()
 
-# Параметры игрока
-player_width = 80
-player_height = 100
-player_x = 225
-player_y = floor_y - player_height
-player_sprite = pygame.transform.scale(pygame.image.load("Dino_idle.png"), [player_width, player_height])
-
-player = Player(player_x, player_y, player_width, player_height)
-
-
 # Создание флагов
 run = True
 end = False
 plus = False
 plus_score = True
+double = False
+
 # Мелодия
 expl_sounds = []
 for snd in ['expl3.wav', 'expl6.wav']:
@@ -267,25 +263,19 @@ pygame.mixer.music.set_volume(0.2)
 pygame.mixer.music.play(loops=-1)
 
 while run:
-
-
     clock.tick(FPS)
 
     cloud_choice = random.randrange(0, 60)
     if cloud_choice == 1:
         new_cloud()
 
-    enemy_choice = random.randrange(0, 100)
-    if enemy_choice == 1:
-        new_enemy()
-
     # Изменение очков и скорости врага
     if not end:
-        score += 1
+        score += 0
         if high_score < score:
             high_score = score
-        enemy_speed = score / 250 + start_enemy_speed
-        cloud_speed = enemy_speed + cloud_start_speed
+        enemy_speed = score / 333 + start_enemy_speed
+        cloud_speed = cloud_start_speed # + enemy_speed
 
         for enemy in enemies:
             if enemy.x < 0 - enemy.width:
@@ -294,6 +284,18 @@ while run:
                 enemy.x -= enemy_speed
     else:
         cloud_speed = cloud_start_speed
+
+    if enemies:
+        last_enemy = enemies[-1]
+        # noinspection PyUnboundLocalVariable
+        distance = player_width * 3 + enemy_speed * 10 + random.randint(100, 500)
+        enemy_choice = random.randrange(0, 20)
+
+        if window_width - last_enemy.x >= distance and enemy_choice == 1:
+            new_enemy()
+
+    else:
+        new_enemy()
 
     for cloud in clouds:
         if cloud.x < 0 - cloud.width:
@@ -321,7 +323,6 @@ while run:
     if (keys[pygame.K_SPACE] or keys[pygame.K_w] or keys[pygame.K_UP]) and not end and not isJump:
         isJump = True
         shoot_sound.play()
-
     # Перезапуск
     if keys[pygame.K_r] and end:
         end = False
@@ -331,7 +332,7 @@ while run:
         new_enemy()
         new_cloud()
         cloud_start_speed = random.randrange(2, 5)
-        player.y = floor_y - player.height
+        player_y = floor_y - player_height
         isJump = False
         jumpForceCurrent = jumpForceConst
 
@@ -340,13 +341,16 @@ while run:
         save_file.write("0")
         save_file.close()
 
+    if keys[pygame.K_f]:
+        grenade = Object(player_width // 2, player_y // 2, grenade_width, grenade_height)
+
     # Прыжок
     if isJump:
         if jumpForceCurrent >= -jumpForceConst:
             if jumpForceCurrent < 0:
-                player.y += (jumpForceCurrent ** 2) // gravity
+                player_y += (jumpForceCurrent ** 2) // gravity
             else:
-                player.y -= (jumpForceCurrent ** 2) // gravity
+                player_y -= (jumpForceCurrent ** 2) // gravity
             jumpForceCurrent -= 1
         else:
             isJump = False
@@ -354,16 +358,25 @@ while run:
 
     # Столкновение с врагом (проверка)
     for enemy in enemies:
-        if collide(player.x, player.y, player.width, player.height, enemy.x, enemy.y, enemy.width, enemy.height)\
+        if collide(player_x, player_y, player_width, player_height, enemy.x, enemy.y, enemy.width, enemy.height) \
                 and not end:
             end = True
             enemy_speed = 0
             save()
+
+    # Перепрыгивание через врага (проверка)
+    for enemy in enemies:
+        if collide(player_x, player_y, player_width, player_height,
+                   enemy.x, 0, enemy.width, window_height - enemy.height) and not end:
+            plus = True
+            if plus_score:
+                score += 50
+                plus_score = False
+        else:
+            plus_score = True
 
     # Вызов отрисовки окна
     draw_window()
 
 # Выход из программы
 pygame.quit()
-
-
